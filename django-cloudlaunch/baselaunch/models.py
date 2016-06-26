@@ -290,6 +290,21 @@ class Sponsor(models.Model):
         return "{0}".format(self.name)
 
 
+class Location(models.Model):
+    """
+    A location containing the latitude and longitude (fetched from the ip) and
+    a django_country https://github.com/SmileyChris/django-countries
+    """
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+
+    country = CountryField(blank='(select country)')
+
+    def __str__(self):
+        return "Country: {0}, Latitude: {1}, Longitude: {2}".format(self.country,
+                                                                    self.latitude,
+                                                                    self.longitude)
+
 class PublicService(DateNameAwareModel):
     """
     Public Service class to display the public services available,
@@ -298,6 +313,7 @@ class PublicService(DateNameAwareModel):
     """
     slug = models.SlugField(max_length=100, primary_key=True)
     links = models.URLField()
+    location = models.ForeignKey(Location, blank=True, null=True)
     purpose = models.TextField(blank=True, null=True)
     comments = models.TextField(blank=True, null=True)
     email_user_support = models.EmailField(blank=True, null=True)
@@ -310,9 +326,6 @@ class PublicService(DateNameAwareModel):
     # The url link to the logo of the Service
     logo = models.URLField(blank=True, null=True)
     tags = models.ManyToManyField(Tag, blank=True)
-    location = models.TextField(blank=True, null=True)
-    # Country => TODO: Add the https://github.com/SmileyChris/django-countries to manage this field
-    country = CountryField(blank_label='(select country)')
 
     def __str__(self):
         return "{0}".format(self.name)
