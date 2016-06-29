@@ -61,7 +61,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     inlines = [AWSCredsInline, OSCredsInline]
 
 
-class ApplicationDeploymentsAdmin(admin.ModelAdmin):
+class AppDeploymentsAdmin(admin.ModelAdmin):
     models = models.ApplicationDeployment
 
 
@@ -74,7 +74,7 @@ class LocationAdmin(admin.ModelAdmin):
     models = models.Location
 
 admin.site.register(models.Application, AppAdmin)
-admin.site.register(models.ApplicationDeployment, AppAdmin)
+admin.site.register(models.ApplicationDeployment, AppDeploymentsAdmin)
 admin.site.register(models.AWS, CloudAdmin)
 admin.site.register(models.EC2, EC2Admin)
 admin.site.register(models.S3, S3Admin)
