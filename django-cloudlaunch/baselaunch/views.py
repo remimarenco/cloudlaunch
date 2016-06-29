@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
+from rest_framework import filters
 
 from baselaunch import drf_helpers
 from baselaunch import models
@@ -236,6 +237,18 @@ class SubnetViewSet(drf_helpers.CustomModelViewSet):
         return serializers.SubnetSerializer
 
 
+class StaticIPViewSet(drf_helpers.CustomModelViewSet):
+    """
+    List user's static IP addresses.
+    """
+    permission_classes = (IsAuthenticated,)
+    serializer_class = serializers.StaticIPSerializer
+
+    def list_objects(self):
+        provider = view_helpers.get_cloud_provider(self)
+        return [{'ip': ip } for ip in provider.network.static_ips()]
+
+
 class InstanceTypeViewSet(drf_helpers.CustomReadOnlyModelViewSet):
     """
     List compute instance types in a given cloud.
@@ -455,7 +468,9 @@ class DeploymentViewSet(viewsets.ModelViewSet):
     queryset = models.ApplicationDeployment.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = serializers.DeploymentSerializer
-    
+    filter_backends = (filters.OrderingFilter,)
+    ordering = ('-added',)
+
     def get_queryset(self):
         """
         This view should return a list of all the purchases

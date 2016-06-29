@@ -175,6 +175,10 @@ class SubnetSerializerUpdate(SubnetSerializer):
             raise serializers.ValidationError("{0}".format(e))
 
 
+class StaticIPSerializer(serializers.Serializer):
+    ip = serializers.CharField(read_only=True)
+
+
 class InstanceTypeSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
     url = CustomHyperlinkedIdentityField(view_name='instance_type-detail',
@@ -458,6 +462,9 @@ class CloudSerializer(serializers.ModelSerializer):
     networks = CustomHyperlinkedIdentityField(view_name='network-list',
                                               lookup_field='slug',
                                               lookup_url_kwarg='cloud_pk')
+    static_ips = CustomHyperlinkedIdentityField(view_name='static_ip-list',
+                                                lookup_field='slug',
+                                                lookup_url_kwarg='cloud_pk')
 
     region_name = serializers.SerializerMethodField()
 
@@ -553,6 +560,20 @@ class ApplicationSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Application
 
 
+class DeploymentAppSerializer(serializers.ModelSerializer):
+    slug = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = models.Application
+
+class DeploymentAppVersionSerializer(serializers.ModelSerializer):
+    application = DeploymentAppSerializer(read_only=True)
+
+    class Meta:
+        model = models.ApplicationVersion
+        fields = ('version', 'frontend_component_path', 'frontend_component_name', 'application')
+
+
 class DeploymentSerializer(serializers.ModelSerializer):
     owner = serializers.CharField(read_only=True)
     name = serializers.CharField(required=True)
@@ -567,13 +588,14 @@ class DeploymentSerializer(serializers.ModelSerializer):
     config_app = serializers.JSONField(write_only=True, required=False)
     task_status = serializers.SerializerMethodField()
     task_result = StoredJSONField(read_only=True)
+    app_version_details = DeploymentAppVersionSerializer(source="application_version", read_only=True)
 
     class Meta:
         model = models.ApplicationDeployment
         fields = ('id','name', 'application', 'application_version', 'target_cloud', 'instance_type',
                   'placement_zone', 'keypair_name', 'network', 'subnet', 'provider_settings',
                   'application_config', 'added', 'updated', 'owner', 'config_app', 'celery_task_id',
-                  'task_status', 'task_result')
+                  'task_status', 'task_result', 'app_version_details')
 
     def to_internal_value(self, data):
         application = data.get('application')
@@ -582,7 +604,7 @@ class DeploymentSerializer(serializers.ModelSerializer):
             version = models.ApplicationVersion.objects.get(application=application, version=version)
             data['application_version'] = version.id
         return super(DeploymentSerializer, self).to_internal_value(data)
-    
+
     def get_task_status(self, obj):
         try:
             task = AsyncResult(obj.celery_task_id)
@@ -606,13 +628,13 @@ class DeploymentSerializer(serializers.ModelSerializer):
         try:
             handler = util.import_class(version.backend_component_name)()
             app_config = validated_data.get("config_app", {})
-            
+
             merged_config = jsonmerge.merge(default_combined_config, app_config)
             final_ud_config = handler.process_app_config(name, cloud_version_config,
                                                          credentials, merged_config)
             async_result = tasks.launch_appliance.delay(name, cloud_version_config,
                                                         credentials, merged_config, final_ud_config)
-            
+
             del validated_data['application']
             del validated_data['config_app']
             validated_data['owner_id'] = request.user.id
