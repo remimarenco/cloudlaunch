@@ -4,7 +4,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Application
+from .models import Application, PublicService
 
 
 # Create your tests here.
@@ -139,3 +139,50 @@ class UserTests(APITestCase):
         """
         # TODO: Ensure that a user's cloud credentials can be created.
         self._register_and_login()
+
+## TODO: Test Tag / Sponsor / Location
+class PublicServiceTests(APITestCase):
+    SPONSOR_DATA = {'name': 'Galaxy Project',
+                    'url': 'https://wiki.galaxyproject.org/GalaxyProject',}
+
+    def _create_sponsor(self, sponsor_data):
+        url = reverse('sponsors-list')
+        return self.client.post(url, sponsor_data, format='json')
+
+    PUBLICSERVICE_DATA = {'name': 'Galaxy Main',
+                          'links': 'http://usegalaxy.org/',
+                          'purpose': 'The Galaxy Project free public server; biomedical research',
+                          'comments': 'Strong on genomics; good central repository for shared Galaxy objects.\
+                          See Main for more.',
+                          'email_user_support': '',
+                          'quotas': 'Storage and computational quotas. See Main for details.',
+                          'sponsors': SPONSOR_DATA
+                          }
+
+    def _create_publicservice(self, publicservice_data):
+        url = reverse('public_services-list')
+        return self.client.post(url, publicservice_data, format='json')
+
+    def test_create_publicservice(self):
+        """
+        Ensure we can create a new public service object.
+        :return:
+        """
+        reponse = self._create_publicservice(PublicServiceTests.PUBLICSERVICE_DATA)
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(PublicServiceTests.objects.count(), 1)
+        self.assertEqual(PublicServiceTests.objects.get().name, 'Galaxy Main')
+        self.assertEqual(PublicServiceTests.objects.get().slug, 'Galaxy Main')
+        self.assertEqual(PublicServiceTests.objects.get().links, 'http://usegalaxy.org/')
+
+    def test_delete_publicservice(self):
+        """
+        Ensure we can delete a public service object
+        :return:
+        """
+        data = PublicServiceTests.PUBLICSERVICE_DATA
+        new_publicservice = self._create_publicservice(data)
+        url = reverse('public_services-detail', args=[new_publicservice.data['slug']])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(PublicService.objects.count(), 0)

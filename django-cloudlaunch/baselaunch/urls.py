@@ -127,5 +127,5 @@ urlpatterns = [
     # reverse urls need to be resolved.
     url(r'accounts/', include('allauth.urls')),
     # Public services
-    url(public_services_regex_pattern, include(public_services_router.urls)),
+    url(public_services_regex_pattern, include(public_services_router.urls, namespace='public_services')),
 ]
